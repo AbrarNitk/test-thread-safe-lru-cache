@@ -102,6 +102,8 @@ impl<Key, Value> Dll<Key, Value> {
         }
     }
 
+    // note: we have to make sure that api user does not mutate the state of the node
+    // todo: Ideally we have to safely check if the node is tail or a head node based on the address
     pub fn move_to_front(&mut self, mut node_ptr: std::ptr::NonNull<Node<Key, Value>>) {
         // todo: SAFETY??
         let node = unsafe { node_ptr.as_mut() };
@@ -144,6 +146,60 @@ impl<Key, Value> Dll<Key, Value> {
         }
     }
 
+    pub fn remove(&mut self, node_ptr: std::ptr::NonNull<Node<Key, Value>>) -> (Key, Value) {
+        assert!(
+            self.size() >= 1,
+            "to remove the node dll atleast must have a node"
+        );
+
+        let node = unsafe { Box::from_raw(node_ptr.as_ptr()) };
+
+        // if the node is head node
+        if node.prev.is_none() {
+            // check if node has next, if yes then handle the previous of and unlink the head
+            if let Some(mut next) = node.next {
+                unsafe { next.as_mut().prev = None };
+                self.head = node.next;
+                self.size -= 1;
+                return (node.key, node.value);
+            } else {
+                // otherwise, there is no node in the system left
+                self.tail = None;
+                self.head = None;
+                self.size = 0;
+                return (node.key, node.value);
+            }
+        }
+
+        // if the node is tail node
+        if node.next.is_none() {
+            if let Some(mut prev) = node.prev {
+                unsafe { prev.as_mut().next = None };
+                self.tail = Some(prev);
+                self.size -= 1;
+                return (node.key, node.value);
+            } else {
+                // otherwise, there is no node in the system left
+                // note: ideally this must be already handled
+                self.tail = None;
+                self.head = None;
+                self.size = 0;
+                return (node.key, node.value);
+            }
+        }
+
+        // if the node is in between
+        if let Some(mut prev) = node.prev {
+            unsafe { prev.as_mut().next = node.next };
+        }
+        if let Some(mut next) = node.next {
+            unsafe { next.as_mut().prev = node.prev };
+        }
+
+        self.size -= 1;
+        return (node.key, node.value);
+    }
+
     pub fn size(&self) -> usize {
         self.size
     }
@@ -156,7 +212,6 @@ impl<Key, Value> Dll<Key, Value> {
 impl<K, V> Drop for Dll<K, V> {
     fn drop(&mut self) {
         while !self.is_empty() {
-            println!("node is going out of the box running");
             self.pop_back();
         }
     }
@@ -273,5 +328,32 @@ mod tests {
                 format!("dll-size: expected to have {i} size")
             );
         }
+    }
+
+    #[test]
+    fn remove_test() {
+        let mut dll = Dll::new();
+        assert!(dll.is_empty(), "dll must be empty");
+
+        let first = dll.push_front(1, 1);
+        assert_eq!(dll.size(), 1, "dll-size: expected to have 1 size");
+
+        let second = dll.push_front(2, 2);
+        assert_eq!(dll.size(), 2, "dll-size: expected to have 2 size");
+
+        let third = dll.push_front(3, 3);
+        assert_eq!(dll.size(), 3, "dll-size: expected to have 3 size");
+
+        let (k, _) = dll.remove(second);
+        assert_eq!(k, 2);
+        assert_eq!(dll.size(), 2, "dll-size: expected to have 2 size");
+
+        let (k, _) = dll.remove(first);
+        assert_eq!(k, 1);
+        assert_eq!(dll.size(), 1, "dll-size: expected to have 2 size");
+
+        let (k, _) = dll.remove(third);
+        assert_eq!(k, 3);
+        assert_eq!(dll.size(), 0, "dll-size: expected to have 2 size");
     }
 }
