@@ -102,6 +102,48 @@ impl<Key, Value> Dll<Key, Value> {
         }
     }
 
+    pub fn move_to_front(&mut self, mut node_ptr: std::ptr::NonNull<Node<Key, Value>>) {
+        // todo: SAFETY??
+        let node = unsafe { node_ptr.as_mut() };
+
+        // check if it is already at the front
+        // note: node should be the part of the dll, means head should not be nullable
+        if node.prev.is_none() {
+            assert!(self.head.is_some(), "expected head to be present");
+            return;
+        }
+
+        // if node is tail, just unlink the previous and move the tail to back
+        if node.next.is_none() {
+            if let Some(mut tail_prev) = node.prev {
+                unsafe { tail_prev.as_mut().next = None };
+                self.tail = Some(tail_prev);
+            }
+        } else {
+            // unlink from prev if present
+            if let Some(ref mut prev) = node.prev {
+                // todo: SAFETY??
+                unsafe { prev.as_mut().next = node.next };
+            }
+
+            // unlink from next
+            if let Some(ref mut next) = node.next {
+                // todo: SAFETY??
+                unsafe { next.as_mut().prev = node.prev };
+            }
+        }
+
+        // make sure to put the prev as null and next will overridden, and it is will always
+        // be overridden, because at-least one more node must be present, if this executes
+        node.prev = None;
+        if let Some(mut current_head) = self.head {
+            // todo: SAFETY??
+            unsafe { current_head.as_mut().prev = Some(node_ptr) };
+            node.next = Some(current_head);
+            self.head = Some(node_ptr);
+        }
+    }
+
     pub fn size(&self) -> usize {
         self.size
     }
@@ -114,6 +156,7 @@ impl<Key, Value> Dll<Key, Value> {
 impl<K, V> Drop for Dll<K, V> {
     fn drop(&mut self) {
         while !self.is_empty() {
+            println!("node is going out of the box running");
             self.pop_back();
         }
     }
@@ -167,6 +210,62 @@ mod tests {
         // check before drop and after drop impl: both cases are working as expected
         for i in 1..10000 {
             dll.push_front(i, i);
+            assert_eq!(
+                dll.size(),
+                i,
+                "{}",
+                format!("dll-size: expected to have {i} size")
+            );
+        }
+    }
+
+    #[test]
+    fn move_front_test() {
+        let mut dll = Dll::new();
+        assert!(dll.is_empty(), "dll must be empty");
+
+        let first = dll.push_front(1, 1);
+        assert_eq!(dll.size(), 1, "dll-size: expected to have 1 size");
+
+        let second = dll.push_front(2, 2);
+        assert_eq!(dll.size(), 2, "dll-size: expected to have 2 size");
+
+        dll.push_front(3, 3);
+        assert_eq!(dll.size(), 3, "dll-size: expected to have 3 size");
+
+        // after three insertion dll: 3 --> 2 --> 1
+
+        dll.move_to_front(second);
+        // after move front to sesond dll: 2 --> 3 --> 1
+        assert_eq!(dll.size(), 3, "dll-size: expected to have 3 size");
+        dll.move_to_front(first);
+        // after move front to sesond dll: 1 --> 2 --> 3
+        assert_eq!(dll.size(), 3, "dll-size: expected to have 3 size");
+
+        let (k, _) = dll.pop_back().unwrap();
+        assert_eq!(3, k);
+        assert_eq!(dll.size(), 2, "dll-size: expected to have 2 size");
+
+        let (k, _) = dll.pop_back().unwrap();
+        assert_eq!(2, k);
+        assert_eq!(dll.size(), 1, "dll-size: expected to have 1 size");
+
+        let (k, _) = dll.pop_back().unwrap();
+        assert_eq!(1, k);
+        assert_eq!(dll.size(), 0, "dll-size: expected to have 0 size");
+    }
+
+    #[test]
+    fn move_front_memory_leak_test() {
+        let mut dll = Dll::new();
+        assert!(dll.is_empty(), "dll must be empty");
+
+        // check before drop and after drop impl: both cases are working as expected
+        for i in 1..10000 {
+            let node = dll.push_front(i, i);
+            if i % 5 == 0 {
+                dll.move_to_front(node);
+            }
             assert_eq!(
                 dll.size(),
                 i,
