@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 
+
 [dev-dependencies]
 criterion = "0.8.2"
-loom = "0.7.2"
+hdrhistogram = "7.5.4"

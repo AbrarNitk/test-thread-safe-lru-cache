@@ -29,12 +29,10 @@ impl<Key, Value> Lru<Key, Value> {
     where
         Key: Eq + Hash,
     {
-        let key_ref = KeyRef { key_ref: &k };
-
         // if key is available, then remove it from lru
         // because same has to be inserted again but it may different data
-        if self.map.contains_key(&key_ref) {
-            if let Some(node) = self.map.remove(&key_ref) {
+        if self.map.contains_key(&KeyRef { key_ref: &k }) {
+            if let Some(node) = self.map.remove(&KeyRef { key_ref: &k }) {
                 self.dll.remove(node);
                 self.size -= 1;
             }
@@ -42,13 +40,23 @@ impl<Key, Value> Lru<Key, Value> {
 
         // if the size of the queue is exceeding capacity, remove the cold value from the last
         if self.size >= self.cap {
-            if let Some((k, _v)) = self.dll.pop_back() {
-                self.map.remove(&KeyRef { key_ref: &k });
+            // this is certainly awesome that valgrind catches
+            // first get the key reference from the heap, then remove it from the map first
+            // because map contains the reference of the heap value
+            if let Some(key) = self.dll.peek_back_ref() {
+                self.map.remove(&KeyRef { key_ref: key });
+                self.dll.pop_back();
                 self.size -= 1;
             }
         }
 
         let node = self.dll.push_front(k, v);
+
+        // here we have to make sure that we are not storing the reference of the stack
+        // instead of the actual value store in the heap(via the dll node)
+        let key_ref = KeyRef {
+            key_ref: unsafe { &(*node.as_ptr()).key },
+        };
         self.map.insert(key_ref, node);
         self.size += 1;
     }
@@ -86,7 +94,7 @@ impl<Key: Eq> Eq for KeyRef<Key> {}
 
 impl<Key: Eq> PartialEq for KeyRef<Key> {
     fn eq(&self, other: &Self) -> bool {
-        unsafe { (*self.key_ref).eq(&*other.key_ref) }
+        unsafe { (&*self.key_ref).eq(&*other.key_ref) }
     }
 }
 

@@ -6,7 +6,7 @@ pub type Link<Key, Value> = Option<std::ptr::NonNull<Node<Key, Value>>>;
 
 // node container for doubly linkedlist
 pub struct Node<Key, Value> {
-    key: Key,
+    pub(crate) key: Key,
     pub(crate) value: Value,
     prev: Link<Key, Value>,
     next: Link<Key, Value>,
@@ -100,6 +100,10 @@ impl<Key, Value> Dll<Key, Value> {
             }
             None => None,
         }
+    }
+
+    pub fn peek_back_ref(&self) -> Option<&Key> {
+        self.tail.as_ref().map(|tail| unsafe { &tail.as_ref().key })
     }
 
     // note: we have to make sure that api user does not mutate the state of the node
