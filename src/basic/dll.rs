@@ -7,7 +7,7 @@ pub type Link<Key, Value> = Option<std::ptr::NonNull<Node<Key, Value>>>;
 // node container for doubly linkedlist
 pub struct Node<Key, Value> {
     key: Key,
-    value: Value,
+    pub(crate) value: Value,
     prev: Link<Key, Value>,
     next: Link<Key, Value>,
 }
