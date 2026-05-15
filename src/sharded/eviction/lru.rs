@@ -49,22 +49,22 @@ where
             capacity,
         }
     }
-    fn pop(&mut self, key: &Key) -> Option<Value> {
+    fn pop(&self, key: &Key) -> Option<Value> {
         todo!()
     }
-    fn push(&mut self, key: Key, value: Value) {
+    fn push(&self, key: Key, value: Value) {
         todo!()
     }
-    fn remove(&mut self, key: &Key) {
+    fn remove(&self, key: &Key) {
         todo!()
     }
-    fn contains(&self, key: &Key) {
+    fn contains(&self, key: &Key) -> bool {
         todo!()
     }
-    fn len(&self) {
+    fn len(&self) -> usize {
         todo!()
     }
-    fn is_empty(&self) {
+    fn is_empty(&self) -> bool {
         todo!()
     }
 }

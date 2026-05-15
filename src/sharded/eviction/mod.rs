@@ -7,10 +7,10 @@ where
     Value: Send + Sync + Clone,
 {
     fn new(capacity: usize) -> Self;
-    fn pop(&mut self, key: &Key) -> Option<Value>;
-    fn push(&mut self, key: Key, value: Value);
-    fn remove(&mut self, key: &Key);
-    fn contains(&self, key: &Key);
-    fn len(&self);
-    fn is_empty(&self);
+    fn pop(&self, key: &Key) -> Option<Value>;
+    fn push(&self, key: Key, value: Value);
+    fn remove(&self, key: &Key);
+    fn contains(&self, key: &Key) -> bool;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
 }
