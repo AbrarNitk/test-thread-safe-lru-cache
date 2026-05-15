@@ -33,8 +33,19 @@ where
         total_shards: usize,
         shard_builder: B,
     ) -> Self {
+        let shard_capacity = capcacity / total_shards + 1;
+        let mut shards = Vec::with_capacity(total_shards);
+        for _ in 0..total_shards {
+            let shard = shard_builder.build(shard_capacity);
+            // this is an issue, because shard builder have its own type to return
+            // and which is the bounded check, means there can be different implmentation with
+            // the same bounds, which is not seems to be allowed, by the objects are allowed
+            // which we do not want to keep to zero cost abstraction
+            shards.push(shard as B::Policy as _);
+        }
+
         Self {
-            shards: Vec::new(),
+            shards,
             _phatntom: std::marker::PhantomData,
         }
     }
