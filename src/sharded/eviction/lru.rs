@@ -1,4 +1,3 @@
-use crate::sharded::eviction::Eviction;
 use std::{
     collections::HashMap,
     hash::Hash,
@@ -67,18 +66,5 @@ where
     }
     fn is_empty(&self) {
         todo!()
-    }
-}
-
-pub struct LruBuilder {}
-
-impl<Key, Value> super::EvictBuilder<Key, Value> for LruBuilder
-where
-    Key: Send + Sync + Clone + Hash + Eq,
-    Value: Send + Sync + Clone,
-{
-    type Policy = Lru<Key, Value>;
-    fn build(&self, capacity: usize) -> Self::Policy {
-        Lru::new(capacity)
     }
 }

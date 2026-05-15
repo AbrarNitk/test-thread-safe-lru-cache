@@ -1,4 +1,7 @@
-use crate::sharded::eviction::{EvictBuilder, Eviction};
+use crate::sharded::{
+    cache,
+    eviction::{EvictBuilder, Eviction, lru::Lru},
+};
 
 use std::hash::Hash;
 
@@ -28,20 +31,11 @@ where
     Value: Send + Sync + Clone,
     EP: Eviction<Key, Value>,
 {
-    fn new<B: EvictBuilder<Key, Value>>(
-        capcacity: usize,
-        total_shards: usize,
-        shard_builder: B,
-    ) -> Self {
-        let shard_capacity = capcacity / total_shards + 1;
+    fn new<Builder: Fn() -> EP>(total_shards: usize, shard_builder: Builder) -> Self {
         let mut shards = Vec::with_capacity(total_shards);
         for _ in 0..total_shards {
-            let shard = shard_builder.build(shard_capacity);
-            // this is an issue, because shard builder have its own type to return
-            // and which is the bounded check, means there can be different implmentation with
-            // the same bounds, which is not seems to be allowed, by the objects are allowed
-            // which we do not want to keep to zero cost abstraction
-            shards.push(shard as B::Policy as _);
+            let shard = shard_builder();
+            shards.push(shard);
         }
 
         Self {
@@ -54,15 +48,20 @@ where
 /// Cache Builder
 /// Default Evict Policy: LRU
 /// Default Number of Shards: 16
-pub struct CacheBuilder<Key, Value> {
+pub struct CacheBuilder<Key, Value, EP> {
     capacity: usize,
     shards: Option<usize>,
     policy: Option<EvictionPolicy>,
     // marking that we are certainly going to use the generic params
-    _phantom: std::marker::PhantomData<(Key, Value)>,
+    _phantom: std::marker::PhantomData<(Key, Value, EP)>,
 }
 
-impl<K, V> CacheBuilder<K, V> {
+impl<Key, Value, EP> CacheBuilder<Key, Value, EP>
+where
+    Key: Send + Sync + Clone + Eq + Hash,
+    Value: Send + Sync + Clone,
+    EP: Eviction<Key, Value>,
+{
     pub fn new(capacity: usize) -> Self {
         Self {
             capacity,
@@ -77,8 +76,26 @@ impl<K, V> CacheBuilder<K, V> {
         self
     }
 
-    // pub fn build(self) -> Cache<K, V> {
-    //     // create the builder in here
-    //     let policy = match self.policy {};
-    // }
+    pub fn with_policy(mut self, policy: EvictionPolicy) -> Self {
+        self.policy = Some(policy);
+        self
+    }
+
+    pub fn build(self) -> Cache<Key, Value, EP> {
+        let total_shards = self.shards.unwrap_or(4);
+
+        create the builder in here
+        let cache: Cache<Key, Value, EP> = match self.policy {
+            Some(EvictionPolicy::Lru) | None => {
+                let shard_builder = move || Lru::<Key, Value>::new(self.capacity);
+                Cache::new(total_shards, shard_builder)
+            }
+            Some(EvictionPolicy::AsyncLru) => {
+                let shard_builder = move || Lru::new(self.capacity);
+                Cache::new(total_shards, shard_builder)
+            }
+        };
+        cache
+
+    }
 }
