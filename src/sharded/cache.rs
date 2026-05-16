@@ -39,7 +39,7 @@ where
     pub fn get(&self, k: &Key) -> Option<Value> {
         let shard_hash = self.hash_builder.hash_one(k);
         let shard = (shard_hash as usize) % self.shards.len();
-        self.shards[shard].pop(k)
+        self.shards[shard].get(k)
     }
 
     // check if the key does contain in it,s particular shard
@@ -97,7 +97,7 @@ where
         }
     }
 
-    // todo: this can be provided with async compilation flag
+    // todo: this can be provided with async compilation flag as well
     pub fn lru_async() {
         todo!()
     }
