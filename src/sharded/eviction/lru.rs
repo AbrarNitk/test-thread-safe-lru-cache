@@ -187,11 +187,30 @@ where
             capacity,
         }
     }
+
     fn get(&self, key: &Key) -> Option<Value> {
+        // todo: what about to handle the ttl for node
+        // now this opeation looks simple
+        // if node is available in the map
+        //  - add it to the recently used list instead of moving on each operation
+        //  - at some limit we have to move the recent to front as well, we have to set the limit
+        //  -
+        // else
+        //  - return simply None
+        //
         todo!()
     }
+
     fn push(&self, key: Key, value: Value) {
-        // inner is the rw-lockable
+        // take the write lock at the inner
+        // check if the key available in the map
+        //  - update the value and move the node at the front
+        // - if not available
+        //   - check if enough space is not available then make room for the new node
+        //   - remove the node from the tail, but before that we have to make sure that
+        //     recent is clean otherwise it may evict the wrong node from the tail
+        //   - then grab the free node from the list and then push the node at the from of it
+        //   - insert the entry into the map
     }
     fn remove(&self, key: &Key) {
         todo!()
