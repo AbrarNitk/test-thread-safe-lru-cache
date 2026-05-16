@@ -24,7 +24,7 @@ where
     // accessed nodes in the array and insert of usize
     // into an array is fast instead of moving the node
     // to front at each time
-    recent_node_idx: Arc<Mutex<Vec<usize>>>,
+    recent_nodes_idx: Arc<Mutex<Vec<usize>>>,
 
     // capacity of the lru
     capacity: usize,
@@ -102,6 +102,37 @@ where
             }
         };
     }
+
+    // move the recently accessed nodes to the front iteratively as they have been added
+    fn handle_recent_used(&self, inner: &mut LruInner<Key, Value>) {
+        // todo: need to think about this lock, possibly we can use the parking_lot mutex in here for the light weight nature
+        let mut recent_guard = self
+            .recent_nodes_idx
+            .lock()
+            .expect("recency lock is poisoned");
+        for &node_index in recent_guard.iter() {
+            if node_index < inner.nodes.len() && inner.nodes[node_index].is_some() {
+                // unlink the node where ever it is right now
+                Self::unlink_node(inner, node_index);
+                Self::push_front(inner, node_index);
+            }
+        }
+        recent_guard.clear();
+        drop(recent_guard);
+    }
+
+    // remove the node index from the LRU
+    // Note: caller has to make sure that input index is available in the node array
+    fn remove(inner: &mut LruInner<Key, Value>, node_index: usize) {
+        // first unlink the node
+        Self::unlink_node(inner, node_index);
+        if let Some(node) = inner.nodes[node_index].take() {
+            // mark the slot as free, so it can be used by others
+            inner.available_slots.push(node_index);
+            // remove the entry from the map, and we let overwritten the value
+            inner.map.remove(&node.key);
+        }
+    }
 }
 
 /////////////////////////////
@@ -129,7 +160,7 @@ pub struct LruInner<Key, Value> {
     // Note: this helps us to easily figure out about
     // which place in the nodes is currently free to be used
     // instead of traversing the array each time
-    available_idx: Vec<usize>,
+    available_slots: Vec<usize>,
 
     // head of the lru which points to the index of the array
     head: Option<usize>,
@@ -148,11 +179,11 @@ where
             inner: Arc::new(RwLock::new(LruInner {
                 map: HashMap::default(),
                 nodes: Vec::with_capacity(capacity),
-                available_idx: Vec::with_capacity(capacity),
+                available_slots: Vec::with_capacity(capacity),
                 head: None,
                 tail: None,
             })),
-            recent_node_idx: Arc::new(Mutex::new(Vec::with_capacity(1024))),
+            recent_nodes_idx: Arc::new(Mutex::new(Vec::with_capacity(1024))),
             capacity,
         }
     }
