@@ -31,11 +31,11 @@ impl<Key, Value> Lru<Key, Value> {
     {
         // if key is available, then remove it from lru
         // because same has to be inserted again but it may different data
-        if self.map.contains_key(&KeyRef { key_ref: &k }) {
-            if let Some(node) = self.map.remove(&KeyRef { key_ref: &k }) {
-                self.dll.remove(node);
-                self.size -= 1;
-            }
+        if self.map.contains_key(&KeyRef { key_ref: &k })
+            && let Some(node) = self.map.remove(&KeyRef { key_ref: &k })
+        {
+            self.dll.remove(node);
+            self.size -= 1;
         }
 
         // if the size of the queue is exceeding capacity, remove the cold value from the last

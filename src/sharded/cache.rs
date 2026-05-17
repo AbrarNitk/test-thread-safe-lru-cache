@@ -109,7 +109,7 @@ mod lru_tests {
     use std::char;
 
     use super::*;
-    use rand::{Rng, RngExt, distr::Alphanumeric};
+    use rand::{RngExt, distr::Alphanumeric};
 
     #[test]
     fn single_thread_push() {

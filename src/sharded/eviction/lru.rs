@@ -48,13 +48,6 @@ where
                 if let Some(current_head_node) = inner.nodes[head_idx].as_mut() {
                     current_head_node.prev = Some(node_index);
                 }
-
-                // println!("{}", inner.nodes.len());
-                // println!("  current-head-index:  {head_idx}");
-                // inner.nodes[head_idx]
-                //     .as_mut()
-                //     .expect(&format!("head index node not found: {head_idx}"))
-                //     .prev = Some(node_index);
             }
             None => {
                 // if head not available then input node becomes the tail as well
@@ -88,9 +81,9 @@ where
         // );
 
         let (node_pre, node_next) = {
-            let node = inner.nodes[node_index].as_ref().expect(&format!(
-                "this assertion makes sure that caller provides correct index: {node_index}"
-            ));
+            let node = inner.nodes[node_index].as_ref().unwrap_or_else(|| {
+                panic!("this assertion makes sure that caller provides correct index: {node_index}")
+            });
             (node.prev, node.next)
         };
 
@@ -157,9 +150,9 @@ where
     }
 }
 
-/////////////////////////////
-//// ## LRU Container ## ////
-/////////////////////////////
+// ############################
+// ##### LRU Container ##### //
+// ############################
 
 pub struct LruNode<Key, Value> {
     key: Key,
@@ -283,10 +276,10 @@ where
             // case if the node is not available in cache
             None => {
                 // if capacity reached then make a room for a new node
-                if inner_guard.map.len() >= self.capacity {
-                    if let Some(tail_idx) = inner_guard.tail {
-                        Self::remove(&mut inner_guard, tail_idx);
-                    }
+                if inner_guard.map.len() >= self.capacity
+                    && let Some(tail_idx) = inner_guard.tail
+                {
+                    Self::remove(&mut inner_guard, tail_idx);
                 }
 
                 // space in the node
@@ -323,7 +316,10 @@ where
     }
 
     fn remove(&self, key: &Key) {
-        todo!()
+        let mut inner_guard = self.inner.write();
+        if let Some(&node_index) = inner_guard.map.get(key) {
+            Self::remove(&mut inner_guard, node_index);
+        }
     }
 
     fn contains(&self, key: &Key) -> bool {

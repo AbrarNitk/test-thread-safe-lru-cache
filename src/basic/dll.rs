@@ -55,7 +55,7 @@ impl<Key, Value> Dll<Key, Value> {
             Some(current_head) => {
                 unsafe {
                     current_head.as_mut().prev = Some(node_link_ptr);
-                    node_link_ptr.as_mut().next = Some(current_head.clone());
+                    node_link_ptr.as_mut().next = Some(*current_head);
                 }
                 self.head = Some(node_link_ptr);
             }
@@ -82,7 +82,7 @@ impl<Key, Value> Dll<Key, Value> {
                         unsafe { tail_prev.as_mut().next = None };
 
                         // point the tail to the previous node
-                        self.tail = Some(tail_prev.clone());
+                        self.tail = Some(*tail_prev);
                     }
                     None => {
                         // otherwise this was the last node in the dll,
@@ -201,7 +201,7 @@ impl<Key, Value> Dll<Key, Value> {
         }
 
         self.size -= 1;
-        return (node.key, node.value);
+        (node.key, node.value)
     }
 
     pub fn size(&self) -> usize {
