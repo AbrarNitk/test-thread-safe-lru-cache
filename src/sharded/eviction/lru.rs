@@ -247,7 +247,6 @@ where
         // other insert the value fresh
         match inner_guard.map.get(&key) {
             Some(&node_index) => {
-                println!("inside the get");
                 Self::unlink_node(&mut inner_guard, node_index);
                 let node = inner_guard.nodes[node_index]
                     .as_mut()
@@ -261,13 +260,9 @@ where
             }
             // case if the node is not available in cache
             None => {
-                println!("head: {:?}", inner_guard.head);
-                println!("tail: {:?}", inner_guard.tail);
-
                 // if capacity reached then make a room for a new node
                 if inner_guard.map.len() >= self.capacity {
                     if let Some(tail_idx) = inner_guard.tail {
-                        println!("remove tail because capacity is full tail-index: {tail_idx}");
                         Self::remove(&mut inner_guard, tail_idx);
                     }
                 }
@@ -277,15 +272,11 @@ where
                 // - second: grab index from the nodes itself
                 let node_index = match inner_guard.available_slots.pop() {
                     Some(index) => {
-                        println!("index from available slot: {index}");
-                        println!("len before insert {}", inner_guard.nodes.len());
                         inner_guard.nodes[index] = Some(LruNode::new(key.clone(), value));
-                        println!("len after insert {}", inner_guard.nodes.len());
                         index
                     }
                     None => {
                         let index = inner_guard.nodes.len();
-                        println!("index from len: {index}");
                         inner_guard
                             .nodes
                             .push(Some(LruNode::new(key.clone(), value)));
@@ -293,11 +284,8 @@ where
                     }
                 };
 
-                println!("pushed node at index: {}", node_index);
                 inner_guard.map.insert(key, node_index);
                 Self::push_front(&mut inner_guard, node_index);
-                println!("head: {:?}", inner_guard.head);
-                println!("tail: {:?}", inner_guard.tail);
             }
         }
 
