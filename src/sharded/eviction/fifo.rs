@@ -7,21 +7,85 @@ where
     Key: Send + Sync + Clone + Hash + Eq,
     Value: Send + Sync + Clone,
 {
-    // lru cache, maintain the nodes in an array and map that
+    // fifo cache, maintain the nodes in an array and map that
     // contains key to index of the node in the array
     inner: Arc<RwLock<FifoInner<Key, Value>>>,
 
-    // Note: in general, reads are also mutable in LRU
-    // but this mechanics provides that we many threads
-    // can try reading at the same time, instead of
-    // mutating the list each time we maintain the recent
-    // accessed nodes in the array and insert of usize
-    // into an array is fast instead of moving the node
-    // to front at each time
-    recent_nodes_idx: Arc<Mutex<Vec<usize>>>,
-
-    // capacity of the lru
+    // capacity of the fifo
     capacity: usize,
+}
+
+impl<Key, Value> Fifo<Key, Value>
+where
+    Key: Send + Sync + Clone + Hash + Eq,
+    Value: Send + Sync + Clone,
+{
+    fn push_back(inner: &mut FifoInner<Key, Value>, node_index: usize) {
+        let current_tail = inner.tail;
+        if let Some(tail_index) = current_tail {
+            inner.nodes[tail_index]
+                .as_mut()
+                .unwrap_or_else(|| {
+                    panic!("assertion which state that caller must pass the correct {node_index}")
+                })
+                .next = Some(node_index);
+        } else {
+            inner.head = Some(node_index);
+        }
+
+        let node = inner.nodes[node_index].as_mut().unwrap();
+        inner.tail = Some(node_index);
+        node.prev = current_tail;
+        node.next = None;
+    }
+
+    // remove the node index from the Fifo
+    // Note: caller has to make sure that input index is available in the node array
+    fn remove(inner: &mut FifoInner<Key, Value>, node_index: usize) {
+        Self::unlink_node(inner, node_index);
+        if let Some(node) = inner.nodes[node_index].take() {
+            inner.map.remove(&node.key);
+            inner.available_slots.push(node_index);
+        }
+    }
+
+    // unlink the node, this api can be use to remove the node or push the node at the back
+    // caller of this api has to make sure that provided node index is valid
+    // Note: from concurrent access, we are mostly safe in here because
+    // we are asking caller to provide the mutable access to lru container
+    fn unlink_node(inner: &mut FifoInner<Key, Value>, node_index: usize) {
+        let (node_pre, node_next) = {
+            let node = inner.nodes[node_index].as_ref().unwrap_or_else(|| {
+                panic!("assertion which state that caller provides correct index: {node_index}")
+            });
+            (node.prev, node.next)
+        };
+
+        // unlink from the previous
+        match node_pre {
+            // node is other than head node
+            Some(pre_index) => {
+                // SAFETY: unwrap is safe in here because if pre-index exists node must also exists
+                inner.nodes[pre_index].as_mut().unwrap().next = node_next;
+            }
+            // node is head node
+            None => {
+                inner.head = node_next;
+            }
+        };
+
+        // unlink from the next
+        match node_next {
+            // node is other than the tail
+            Some(next_index) => {
+                inner.nodes[next_index].as_mut().unwrap().prev = node_pre;
+            }
+            // node is tail node
+            None => {
+                inner.tail = node_pre;
+            }
+        };
+    }
 }
 
 /// LRU related utilities
@@ -91,7 +155,6 @@ where
                 head: None,
                 tail: None,
             })),
-            recent_nodes_idx: Arc::new(Mutex::new(Vec::with_capacity(1024))),
             capacity,
         }
     }
@@ -99,21 +162,64 @@ where
     fn get(&self, key: &Key) -> Option<Value> {
         todo!()
     }
+
     fn push(&self, key: Key, value: Value) {
-        todo!()
+        let mut inner_guard = self.inner.write();
+
+        // if the key is available then update the value of the node
+
+        if let Some(&node_index) = inner_guard.map.get(&key) {
+            Self::unlink_node(&mut inner_guard, node_index);
+            let node = inner_guard.nodes[node_index]
+                .as_mut()
+                .expect("assertion that if the index exists in then node exists");
+            // update the value in-place
+            node.value = value;
+            // push the node to the front of the lru
+            Self::push_back(&mut inner_guard, node_index);
+            return;
+        }
+
+        // otherwise, make a room to insert the new node if it reaches to the capacity
+        if inner_guard.map.len() >= self.capacity
+            && let Some(node_index) = inner_guard.head
+        {
+            Self::remove(&mut inner_guard, node_index);
+        }
+
+        // then insert the node in the array at the tail
+        let node_index = if let Some(idx) = inner_guard.available_slots.pop() {
+            // if the place is already claimed in the array
+            inner_guard.nodes[idx as usize] = Some(FifoNode::new(key.clone(), value));
+            idx
+        } else {
+            // otherwise claim the place in the array
+            let node_index = inner_guard.nodes.len();
+            inner_guard
+                .nodes
+                .push(Some(FifoNode::new(key.clone(), value)));
+            node_index
+        };
+
+        inner_guard.map.insert(key, node_index);
+        Self::push_back(&mut inner_guard, node_index);
     }
+
     fn remove(&self, key: &Key) {
-        let mut _inner_guard = self.inner.write();
-        if let Some(&_node_index) = _inner_guard.map.get(key) {
-            todo!() // Self::remove(&mut inner_guard, node_index);
+        let mut inner_guard = self.inner.write();
+        if let Some(&node_index) = inner_guard.map.get(key) {
+            Self::remove(&mut inner_guard, node_index);
         }
     }
+
     fn contains(&self, key: &Key) -> bool {
         self.inner.read().map.contains_key(key)
     }
+
     fn len(&self) -> usize {
         self.inner.read().map.len()
     }
+
     fn is_empty(&self) -> bool {
         self.inner.read().map.is_empty()
     }
