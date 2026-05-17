@@ -160,14 +160,22 @@ where
     }
 
     fn get(&self, key: &Key) -> Option<Value> {
-        todo!()
+        let inner_guard = self.inner.read();
+
+        if let Some(&node_index) = inner_guard.map.get(key) {
+            let node = inner_guard.nodes[node_index]
+                .as_ref()
+                .expect("must be present");
+            return Some(node.value.clone());
+        }
+
+        None
     }
 
     fn push(&self, key: Key, value: Value) {
         let mut inner_guard = self.inner.write();
 
         // if the key is available then update the value of the node
-
         if let Some(&node_index) = inner_guard.map.get(&key) {
             Self::unlink_node(&mut inner_guard, node_index);
             let node = inner_guard.nodes[node_index]
