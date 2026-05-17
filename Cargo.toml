@@ -6,9 +6,25 @@ edition = "2024"
 [dependencies]
 parking_lot = "0.12.5"
 
-
 [dev-dependencies]
-criterion = "0.8.2"
+criterion = { version = "0.8.2", features = ["html_reports"] }
 hdrhistogram = "7.5.4"
 rand = "0.10.1"
 tokio = { version = "1.52.3", features = ["full"] }
+
+# ── Benchmarks ────────────────────────────────────────────────────────────────
+[[bench]]
+name = "basic"
+harness = false
+
+[[bench]]
+name = "compare"
+harness = false
+
+[[bench]]
+name = "latency"
+harness = false
+
+# ── Examples ──────────────────────────────────────────────────────────────────
+[[example]]
+name = "report"
