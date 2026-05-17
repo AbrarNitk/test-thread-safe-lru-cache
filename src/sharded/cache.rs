@@ -135,11 +135,6 @@ where
             _phatntom: PhantomData,
         }
     }
-
-    // todo: this can be provided with async compilation flag as well
-    pub fn lru_async() {
-        todo!()
-    }
 }
 
 #[cfg(test)]
@@ -233,4 +228,94 @@ mod lru_tests {
 }
 
 #[cfg(test)]
-mod lru_async_tests {}
+mod fifo_tests {
+
+    use std::char;
+
+    use super::*;
+    use rand::{RngExt, distr::Alphanumeric};
+
+    #[test]
+    fn single_thread_push() {
+        let cache = Cache::fifo(100000, 10);
+
+        for key in 0..1500000 {
+            cache.push(key, key + 1);
+        }
+
+        // result: taking around a second
+    }
+
+    #[test]
+    fn single_thread_push_get() {
+        let cache = Cache::fifo(100000, 10);
+
+        // push
+        for key in 0..1000000 {
+            cache.push(key, key + 1);
+        }
+
+        // get
+        for key in 0..1000000 {
+            cache.get(&key);
+        }
+        // result: taking around a second
+    }
+
+    #[test]
+    fn single_thread_push_get_string() {
+        let cache = Cache::fifo(100000, 10);
+
+        let rng = rand::rng();
+
+        let string_iter = std::iter::repeat_with(|| {
+            rng.clone()
+                .sample_iter(&Alphanumeric)
+                .take(10)
+                .map(char::from)
+                .collect::<String>()
+        });
+
+        // push
+        for key in string_iter.take(1000000) {
+            cache.push(key.clone(), key);
+        }
+
+        // get
+        for key in string_iter.take(1000000) {
+            cache.get(&key);
+        }
+        // result: taking around 6 second
+    }
+
+    #[test]
+    fn with_threads_push() {
+        let cache = Cache::fifo(100000, 10);
+        std::thread::scope(|scope| {
+            for _ in 0..10 {
+                scope.spawn(|| {
+                    for key in 0..1000000 {
+                        cache.push(key, key);
+                    }
+                });
+            }
+        });
+    }
+
+    #[test]
+    fn with_threads_push_and_get() {
+        let cache = Cache::fifo(100000, 10);
+        std::thread::scope(|scope| {
+            for _ in 0..10 {
+                scope.spawn(|| {
+                    for key in 0..1000000 {
+                        cache.push(key, key);
+                    }
+                    for key in 0..1000000 {
+                        cache.get(&key);
+                    }
+                });
+            }
+        });
+    }
+}

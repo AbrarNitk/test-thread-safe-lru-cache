@@ -247,29 +247,29 @@ mod test {
         // assert!(cache.contains(&1));
         // assert_eq!(cache.contains(&2), false);
 
-        println!("inside push: key: {}", 0);
+        // println!("inside push: key: {}", 0);
         cache.push(0, 1);
-        println!("push done: key: {}", 0);
+        // println!("push done: key: {}", 0);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
 
-        println!("inside push: key: {}", 1);
+        // println!("inside push: key: {}", 1);
         cache.push(1, 2);
-        println!("push done: key: {}", 1);
+        // println!("push done: key: {}", 1);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
 
-        println!("inside push: key: {}", 2);
+        // println!("inside push: key: {}", 2);
         cache.push(2, 3);
-        println!("push done: key: {}", 2);
+        // println!("push done: key: {}", 2);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
 
-        println!("inside push: key: {}", 3);
+        // println!("inside push: key: {}", 3);
         cache.push(3, 4);
-        println!("push done: key: {}", 3);
+        // println!("push done: key: {}", 3);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
         cache.push(5, 1);
         cache.push(6, 1);
         cache.push(7, 1);
@@ -291,29 +291,29 @@ mod test {
         let cache = Fifo::new(5);
         assert_eq!(cache.len(), 0);
 
-        println!("inside push: key: {}", 0);
+        // println!("inside push: key: {}", 0);
         cache.push(0, 1);
-        println!("push done: key: {}", 0);
+        // println!("push done: key: {}", 0);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
 
-        println!("inside push: key: {}", 1);
+        // println!("inside push: key: {}", 1);
         cache.push(1, 2);
-        println!("push done: key: {}", 1);
+        // println!("push done: key: {}", 1);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
 
-        println!("inside push: key: {}", 2);
+        // println!("inside push: key: {}", 2);
         cache.push(2, 3);
-        println!("push done: key: {}", 2);
+        // println!("push done: key: {}", 2);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
 
-        println!("inside push: key: {}", 3);
+        // println!("inside push: key: {}", 3);
         cache.push(3, 4);
-        println!("push done: key: {}", 3);
+        // println!("push done: key: {}", 3);
 
-        println!("-----------------------------");
+        // println!("-----------------------------");
         cache.push(5, 1);
         cache.push(6, 1);
         cache.push(7, 1);
