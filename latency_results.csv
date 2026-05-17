@@ -1,0 +1,13 @@
+impl,threads,p50_ns,p95_ns,p99_ns,p999_ns,max_ns
+basic_global_mutex_1t,1,50,100,120,180,13551
+basic_global_mutex_2t,2,260,390,980,1400,45791
+basic_global_mutex_4t,4,300,5383,9943,17903,45951
+basic_global_mutex_8t,8,940,10975,18335,29503,1011711
+sharded_lru_4shards_1t,1,60,110,160,300,121087
+sharded_lru_4shards_2t,2,90,410,990,1580,40095
+sharded_lru_4shards_4t,4,139,660,1460,2821,428799
+sharded_lru_4shards_8t,8,250,2711,9423,23583,761343
+sharded_fifo_4shards_1t,1,50,70,100,190,13975
+sharded_fifo_4shards_2t,2,60,150,260,590,15583
+sharded_fifo_4shards_4t,4,70,220,430,1410,47423
+sharded_fifo_4shards_8t,8,210,1440,3321,13743,56959
