@@ -241,23 +241,23 @@ where
         // recently used nodes which we are pushing in the recent-accessed
         // handle recent used so eviction policy works correctly
         // this makes a write a bit slow, and gives the read to boost
-        // self.handle_recent_used(&mut inner_guard);
+        self.handle_recent_used(&mut inner_guard);
 
         // if the value is available already then update the value in place
         // other insert the value fresh
         match inner_guard.map.get(&key) {
             Some(&node_index) => {
                 println!("inside the get");
-                // Self::unlink_node(&mut inner_guard, node_index);
-                // let node = inner_guard.nodes[node_index]
-                //     .as_mut()
-                //     .expect("assertion that if the index exists in then node exists");
+                Self::unlink_node(&mut inner_guard, node_index);
+                let node = inner_guard.nodes[node_index]
+                    .as_mut()
+                    .expect("assertion that if the index exists in then node exists");
 
-                // // update the value in-place
-                // node.value = value;
+                // update the value in-place
+                node.value = value;
 
-                // // push the node to the front of the lru
-                // Self::push_front(&mut inner_guard, node_index);
+                // push the node to the front of the lru
+                Self::push_front(&mut inner_guard, node_index);
             }
             // case if the node is not available in cache
             None => {
@@ -378,7 +378,63 @@ mod test {
         cache.push(16, 1);
         cache.push(17, 1);
         cache.push(18, 1);
+        assert_eq!(cache.len(), 2, "cache size error");
+    }
 
-        println!("cache size: {}", cache.len());
+    #[test]
+    fn push_test_with_repeat_key() {
+        let cache = Lru::new(2);
+        assert_eq!(cache.len(), 0);
+
+        println!("inside push: key: {}", 0);
+        cache.push(0, 1);
+        println!("push done: key: {}", 0);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 1);
+        cache.push(1, 2);
+        println!("push done: key: {}", 1);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 2);
+        cache.push(2, 3);
+        println!("push done: key: {}", 2);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 3);
+        cache.push(3, 4);
+        println!("push done: key: {}", 3);
+
+        println!("-----------------------------");
+        cache.push(5, 1);
+        cache.push(6, 1);
+        cache.push(7, 1);
+        cache.push(8, 1);
+
+        cache.push(12, 1);
+        cache.push(13, 1);
+        cache.push(14, 1);
+        cache.push(15, 1);
+        cache.push(16, 1);
+        cache.push(17, 1);
+        cache.push(18, 1);
+
+        // repeat the keys again
+        cache.push(5, 1);
+        cache.push(6, 1);
+        cache.push(7, 1);
+        cache.push(8, 1);
+        cache.push(12, 1);
+        cache.push(13, 1);
+        cache.push(14, 1);
+        cache.push(15, 1);
+        cache.push(16, 1);
+        cache.push(17, 1);
+        cache.push(18, 1);
+
+        assert_eq!(cache.len(), 2, "cache size error");
     }
 }
