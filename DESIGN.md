@@ -224,7 +224,14 @@ spread across many keys.
 - others blogs references
 
 
-## How To Run
+## Run Tests
+
+```shell
+cargo test --all
+```
+
+
+## Run Benches and Generate Report
 
 Please open the `reports.html` file to the results and check the directory
 for the flamegraphs.
