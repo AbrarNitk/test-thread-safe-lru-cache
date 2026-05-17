@@ -42,6 +42,13 @@ where
         self.shards[shard].get(k)
     }
 
+    // get the key from particular shard
+    pub fn remove(&self, k: &Key) {
+        let shard_hash = self.hash_builder.hash_one(k);
+        let shard = (shard_hash as usize) % self.shards.len();
+        self.shards[shard].remove(k);
+    }
+
     // check if the key does contain in it,s particular shard
     pub fn contains(&self, k: &Key) -> bool {
         let shard_hash = self.hash_builder.hash_one(k);
