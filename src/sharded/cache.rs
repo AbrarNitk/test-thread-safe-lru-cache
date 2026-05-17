@@ -1,4 +1,4 @@
-use crate::sharded::eviction::{Eviction, lru::Lru};
+use crate::sharded::eviction::{Eviction, fifo::Fifo, lru::Lru};
 
 use std::{
     hash::{BuildHasher, Hash, RandomState},
@@ -94,6 +94,38 @@ where
         let capacity_per_shard = capacity / shards + 1;
         for _ in 0..shards {
             let shard = Lru::new(capacity_per_shard);
+            cache_shards.push(shard);
+        }
+
+        Self {
+            shards: cache_shards,
+            hash_builder: RandomState::new(),
+            _phatntom: PhantomData,
+        }
+    }
+
+    // todo: this can be provided with async compilation flag as well
+    pub fn lru_async() {
+        todo!()
+    }
+}
+
+// Cache implmentation for the Lru Policy
+impl<Key, Value> Cache<Key, Value, Fifo<Key, Value>>
+where
+    Key: Send + Sync + Clone + Eq + Hash,
+    Value: Send + Sync + Clone,
+{
+    // build lru with the direct function call
+    pub fn fifo(capacity: usize, shards: usize) -> Self {
+        assert!(
+            shards > 0,
+            "number of shards expected to be greater than zero"
+        );
+        let mut cache_shards = vec![];
+        let capacity_per_shard = capacity / shards + 1;
+        for _ in 0..shards {
+            let shard = Fifo::new(capacity_per_shard);
             cache_shards.push(shard);
         }
 

@@ -1,3 +1,4 @@
+pub mod fifo;
 pub mod lru;
 
 // interface for the cache eviction policy algorithms
