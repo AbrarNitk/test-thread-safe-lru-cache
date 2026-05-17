@@ -7,7 +7,7 @@ In the first DLL based when it comes to thread safe, used single Mutex, means al
 gets serialized, and used the unsafe part of the Rust with the safety guarentees.
 
 
-## DLL + Map: Thread Safe Lru Cache
+## Approach 1: DLL + Map: Thread Safe Lru Cache
 
 ### Overview
 
@@ -103,7 +103,7 @@ solves.
 
 
 
-## Shared Index Based Thread Safe Cache
+## Approach 2: Shared Index Based Thread Safe Cache
 
 ### Overview
 
@@ -115,6 +115,9 @@ working on different keys don't block each other at all.
 The more shards, the less contention threads hitting different shards run
 fully in parallel.
 
+In this implementation, I have kept policies separate from mechanism and which does
+makes sense in way that mechanism care about the logic(how should it happen), and
+policies care about the rules, what should happen.
 
 
 ### Per-Shard Design: Index-Based Node Array
