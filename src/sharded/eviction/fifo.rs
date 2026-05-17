@@ -285,4 +285,129 @@ mod test {
 
         assert_eq!(cache.len(), 10, "cache size error");
     }
+
+    #[test]
+    fn push_test_with_repeat_key() {
+        let cache = Fifo::new(5);
+        assert_eq!(cache.len(), 0);
+
+        println!("inside push: key: {}", 0);
+        cache.push(0, 1);
+        println!("push done: key: {}", 0);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 1);
+        cache.push(1, 2);
+        println!("push done: key: {}", 1);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 2);
+        cache.push(2, 3);
+        println!("push done: key: {}", 2);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 3);
+        cache.push(3, 4);
+        println!("push done: key: {}", 3);
+
+        println!("-----------------------------");
+        cache.push(5, 1);
+        cache.push(6, 1);
+        cache.push(7, 1);
+        cache.push(8, 1);
+
+        cache.push(12, 1);
+        cache.push(13, 1);
+        cache.push(14, 1);
+        cache.push(15, 1);
+        cache.push(16, 1);
+        cache.push(17, 1);
+        cache.push(18, 1);
+
+        // repeat the keys again
+        cache.push(5, 1);
+        cache.push(6, 1);
+        cache.push(7, 1);
+        cache.push(8, 1);
+        cache.push(12, 1);
+        cache.push(13, 1);
+        cache.push(14, 1);
+        cache.push(15, 1);
+        cache.push(16, 1);
+        cache.push(17, 1);
+        cache.push(18, 1);
+
+        assert_eq!(cache.len(), 5, "cache size error");
+    }
+
+    #[test]
+    fn push_and_get_test() {
+        let cache = Fifo::new(10);
+        assert_eq!(cache.len(), 0);
+
+        cache.push(0, 1);
+        cache.push(1, 2);
+        cache.push(2, 3);
+        cache.push(3, 4);
+        cache.push(4, 5);
+        cache.push(5, 6);
+        cache.push(6, 7);
+        cache.push(7, 8);
+        cache.push(8, 9);
+        cache.push(9, 10);
+        assert_eq!(cache.len(), 10);
+
+        assert_eq!(cache.get(&0), Some(1));
+        assert_eq!(cache.get(&1), Some(2));
+        assert_eq!(cache.get(&2), Some(3));
+        assert_eq!(cache.get(&3), Some(4));
+        assert_eq!(cache.get(&4), Some(5));
+        assert_eq!(cache.get(&5), Some(6));
+        assert_eq!(cache.get(&6), Some(7));
+        assert_eq!(cache.get(&7), Some(8));
+        assert_eq!(cache.get(&8), Some(9));
+        assert_eq!(cache.get(&9), Some(10));
+        assert_eq!(cache.len(), 10);
+
+        cache.push(10, 11);
+        cache.push(11, 12);
+        cache.push(12, 13);
+        cache.push(13, 14);
+        cache.push(14, 15);
+        cache.push(15, 16);
+        cache.push(16, 17);
+        cache.push(17, 18);
+        cache.push(18, 19);
+        cache.push(19, 20);
+
+        // all are not availale now
+        assert_eq!(cache.get(&0), None);
+        assert_eq!(cache.get(&1), None);
+        assert_eq!(cache.get(&2), None);
+        assert_eq!(cache.get(&3), None);
+        assert_eq!(cache.get(&4), None);
+        assert_eq!(cache.get(&5), None);
+        assert_eq!(cache.get(&6), None);
+        assert_eq!(cache.get(&7), None);
+        assert_eq!(cache.get(&8), None);
+        assert_eq!(cache.get(&9), None);
+        assert_eq!(cache.len(), 10);
+
+        // all are not availble
+        assert_eq!(cache.get(&10), Some(11));
+        assert_eq!(cache.get(&11), Some(12));
+        assert_eq!(cache.get(&12), Some(13));
+        assert_eq!(cache.get(&13), Some(14));
+        assert_eq!(cache.get(&14), Some(15));
+        assert_eq!(cache.get(&15), Some(16));
+        assert_eq!(cache.get(&16), Some(17));
+        assert_eq!(cache.get(&17), Some(18));
+        assert_eq!(cache.get(&18), Some(19));
+        assert_eq!(cache.get(&19), Some(20));
+
+        assert_eq!(cache.len(), 10, "cache size error");
+    }
 }
