@@ -223,15 +223,37 @@ where
 
     fn get(&self, key: &Key) -> Option<Value> {
         // todo: what about to handle the ttl for node
-        // now this opeation looks simple
-        // if node is available in the map
-        //  - add it to the recently used list instead of moving on each operation
-        //  - at some limit we have to move the recent to front as well, we have to set the limit
-        //  -
-        // else
-        //  - return simply None
-        //
-        todo!()
+
+        // take the read guard of inner cache
+        let inner_read_guard = self.inner.read();
+
+        if let Some(&node_index) = inner_read_guard.map.get(key) {
+            let node = inner_read_guard.nodes[node_index].as_ref().unwrap();
+
+            // now we record that this node have get operation, so later we can handle the recency
+
+            let value = node.value.clone();
+            let mut recent_nodes_guard = self.recent_nodes_idx.lock();
+            recent_nodes_guard.push(node_index);
+            let handle_recency = recent_nodes_guard.len() >= 64; // note: by the way this must also be configurable and selected by the users based on the page size
+            drop(recent_nodes_guard);
+
+            // Note: this is safe to drop in here now, or even before the write lock
+            // but looks more safe in here, that reader and writer are not waiting at the
+            // same time on the recent-nodes
+            drop(inner_read_guard);
+
+            // handle the recency movement, at some point in time we have to do it
+            if handle_recency {
+                let mut inner_write_guard = self.inner.write();
+                // this can be done on each step as well, but there are certain benefits to that
+                // and main is the cache-locality
+                self.handle_recent_used(&mut inner_write_guard);
+            }
+
+            return Some(value);
+        }
+        None
     }
 
     fn push(&self, key: Key, value: Value) {
@@ -424,5 +446,73 @@ mod test {
         cache.push(18, 1);
 
         assert_eq!(cache.len(), 2, "cache size error");
+    }
+
+    #[test]
+    fn push_and_get_test() {
+        let cache = Lru::new(10);
+        assert_eq!(cache.len(), 0);
+
+        cache.push(0, 1);
+        cache.push(1, 2);
+        cache.push(2, 3);
+        cache.push(3, 4);
+        cache.push(4, 5);
+        cache.push(5, 6);
+        cache.push(6, 7);
+        cache.push(7, 8);
+        cache.push(8, 9);
+        cache.push(9, 10);
+        assert_eq!(cache.len(), 10);
+
+        assert_eq!(cache.get(&0), Some(1));
+        assert_eq!(cache.get(&1), Some(2));
+        assert_eq!(cache.get(&2), Some(3));
+        assert_eq!(cache.get(&3), Some(4));
+        assert_eq!(cache.get(&4), Some(5));
+        assert_eq!(cache.get(&5), Some(6));
+        assert_eq!(cache.get(&6), Some(7));
+        assert_eq!(cache.get(&7), Some(8));
+        assert_eq!(cache.get(&8), Some(9));
+        assert_eq!(cache.get(&9), Some(10));
+        assert_eq!(cache.len(), 10);
+
+        cache.push(10, 11);
+        cache.push(11, 12);
+        cache.push(12, 13);
+        cache.push(13, 14);
+        cache.push(14, 15);
+        cache.push(15, 16);
+        cache.push(16, 17);
+        cache.push(17, 18);
+        cache.push(18, 19);
+        cache.push(19, 20);
+
+        // all are not availale now
+        assert_eq!(cache.get(&0), None);
+        assert_eq!(cache.get(&1), None);
+        assert_eq!(cache.get(&2), None);
+        assert_eq!(cache.get(&3), None);
+        assert_eq!(cache.get(&4), None);
+        assert_eq!(cache.get(&5), None);
+        assert_eq!(cache.get(&6), None);
+        assert_eq!(cache.get(&7), None);
+        assert_eq!(cache.get(&8), None);
+        assert_eq!(cache.get(&9), None);
+        assert_eq!(cache.len(), 10);
+
+        // all are not availble
+        assert_eq!(cache.get(&10), Some(11));
+        assert_eq!(cache.get(&11), Some(12));
+        assert_eq!(cache.get(&12), Some(13));
+        assert_eq!(cache.get(&13), Some(14));
+        assert_eq!(cache.get(&14), Some(15));
+        assert_eq!(cache.get(&15), Some(16));
+        assert_eq!(cache.get(&16), Some(17));
+        assert_eq!(cache.get(&17), Some(18));
+        assert_eq!(cache.get(&18), Some(19));
+        assert_eq!(cache.get(&19), Some(20));
+
+        assert_eq!(cache.len(), 10, "cache size error");
     }
 }
