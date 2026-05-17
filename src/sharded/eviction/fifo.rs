@@ -1,4 +1,4 @@
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 #[derive(Clone)]
@@ -230,5 +230,59 @@ where
 
     fn is_empty(&self) -> bool {
         self.inner.read().map.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sharded::eviction::Eviction;
+
+    use super::*;
+
+    #[test]
+    fn push_test() {
+        let cache = Fifo::new(10);
+        assert_eq!(cache.len(), 0);
+        // assert_eq!(cache.len(), 1);
+        // assert!(cache.contains(&1));
+        // assert_eq!(cache.contains(&2), false);
+
+        println!("inside push: key: {}", 0);
+        cache.push(0, 1);
+        println!("push done: key: {}", 0);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 1);
+        cache.push(1, 2);
+        println!("push done: key: {}", 1);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 2);
+        cache.push(2, 3);
+        println!("push done: key: {}", 2);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 3);
+        cache.push(3, 4);
+        println!("push done: key: {}", 3);
+
+        println!("-----------------------------");
+        cache.push(5, 1);
+        cache.push(6, 1);
+        cache.push(7, 1);
+        cache.push(8, 1);
+
+        cache.push(12, 1);
+        cache.push(13, 1);
+        cache.push(14, 1);
+        cache.push(15, 1);
+        cache.push(16, 1);
+        cache.push(17, 1);
+        cache.push(18, 1);
+
+        assert_eq!(cache.len(), 10, "cache size error");
     }
 }
