@@ -37,6 +37,10 @@ impl<Key, Value> ThreadSafeLru<Key, Value> {
     pub fn len(&self) -> usize {
         self.lru.lock().unwrap().size()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.lru.lock().unwrap().is_empty()
+    }
 }
 
 unsafe impl<K: Send, V: Send + Sync> Send for ThreadSafeLru<K, V> {}

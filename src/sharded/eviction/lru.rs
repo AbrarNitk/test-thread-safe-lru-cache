@@ -38,7 +38,7 @@ where
     // Note: from concurrent access, we are mostly safe in here because
     // we are asking caller to provide the mutable access to lru container
     fn push_front(inner: &mut LruInner<Key, Value>, node_index: usize) {
-        println!("  push-front: with index: {}", node_index);
+        // println!("  push-front: with index: {}", node_index);
 
         let current_head_idx = inner.head;
 
@@ -58,7 +58,7 @@ where
             }
             None => {
                 // if head not available then input node becomes the tail as well
-                println!("  changing the tail: {node_index}");
+                // println!("  changing the tail: {node_index}");
                 inner.tail = Some(node_index);
             }
         }
@@ -71,7 +71,7 @@ where
         node.prev = None; // on the safer side, which make sure that prev is always point to none
         inner.head = Some(node_index);
 
-        println!("  front-push:done with index: {}", node_index);
+        // println!("  front-push:done with index: {}", node_index);
     }
 
     // unlink the node, this api can be use to remove the node or push the node at the front
@@ -79,13 +79,13 @@ where
     // Note: from concurrent access, we are mostly safe in here because
     // we are asking caller to provide the mutable access to lru container
     fn unlink_node(inner: &mut LruInner<Key, Value>, node_index: usize) {
-        println!("  unlink-node: inside the unlink: {node_index}");
-        println!(
-            "    index: {}, node length: {} : {}",
-            node_index,
-            inner.nodes.len(),
-            inner.nodes.get(node_index).unwrap().is_some()
-        );
+        // println!("  unlink-node: inside the unlink: {node_index}");
+        // println!(
+        //     "    index: {}, node length: {} : {}",
+        //     node_index,
+        //     inner.nodes.len(),
+        //     inner.nodes.get(node_index).unwrap().is_some()
+        // );
 
         let (node_pre, node_next) = {
             let node = inner.nodes[node_index].as_ref().expect(&format!(
@@ -118,11 +118,11 @@ where
                 inner.tail = node_pre;
             }
         };
-        println!(
-            " after-unlink: head => {:?}, tail: {:?}",
-            inner.head, inner.tail
-        );
-        println!("  unlink done: {node_index}");
+        // println!(
+        //     " after-unlink: head => {:?}, tail: {:?}",
+        //     inner.head, inner.tail
+        // );
+        // println!("  unlink done: {node_index}");
     }
 
     // move the recently accessed nodes to the front iteratively as they have been added
@@ -143,9 +143,9 @@ where
     // remove the node index from the LRU
     // Note: caller has to make sure that input index is available in the node array
     fn remove(inner: &mut LruInner<Key, Value>, node_index: usize) {
-        println!("  inside remove: {node_index}");
+        // println!("  inside remove: {node_index}");
         // first unlink the node
-        println!("  unlink the node index: {node_index}");
+        // println!("  unlink the node index: {node_index}");
         Self::unlink_node(inner, node_index);
         if let Some(node) = inner.nodes[node_index].take() {
             // remove the entry from the map, and we let overwritten the value
@@ -153,7 +153,7 @@ where
             // mark the slot as free, so it can be used by others
             inner.available_slots.push(node_index);
         }
-        println!("  remove done: {node_index}");
+        // println!("  remove done: {node_index}");
     }
 }
 
