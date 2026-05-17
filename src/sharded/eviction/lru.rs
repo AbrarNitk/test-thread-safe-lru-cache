@@ -1,5 +1,5 @@
 use parking_lot::{Mutex, RwLock};
-use std::{borrow::Borrow, collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 /// This module contains the code related to implementation of Lru Policy
 
@@ -45,16 +45,16 @@ where
         // if there is a head presents, point head.prev to the given node
         match current_head_idx {
             Some(head_idx) => {
-                // if let Some(current_head_node) = inner.nodes[head_idx].as_mut() {
-                //     current_head_node.prev = Some(node_index);
-                // }
+                if let Some(current_head_node) = inner.nodes[head_idx].as_mut() {
+                    current_head_node.prev = Some(node_index);
+                }
 
-                println!("{}", inner.nodes.len());
-                println!("  current-head-index:  {head_idx}");
-                inner.nodes[head_idx]
-                    .as_mut()
-                    .expect(&format!("head index node not found: {head_idx}"))
-                    .prev = Some(node_index);
+                // println!("{}", inner.nodes.len());
+                // println!("  current-head-index:  {head_idx}");
+                // inner.nodes[head_idx]
+                //     .as_mut()
+                //     .expect(&format!("head index node not found: {head_idx}"))
+                //     .prev = Some(node_index);
             }
             None => {
                 // if head not available then input node becomes the tail as well
@@ -331,7 +331,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::sharded::{cache::Cache, eviction::Eviction};
+    use crate::sharded::eviction::Eviction;
 
     use super::*;
 
