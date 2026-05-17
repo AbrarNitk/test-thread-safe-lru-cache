@@ -198,7 +198,7 @@ where
         // then insert the node in the array at the tail
         let node_index = if let Some(idx) = inner_guard.available_slots.pop() {
             // if the place is already claimed in the array
-            inner_guard.nodes[idx as usize] = Some(FifoNode::new(key.clone(), value));
+            inner_guard.nodes[idx] = Some(FifoNode::new(key.clone(), value));
             idx
         } else {
             // otherwise claim the place in the array
