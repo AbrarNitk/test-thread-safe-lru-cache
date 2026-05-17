@@ -1,8 +1,5 @@
-use std::{
-    collections::HashMap,
-    hash::Hash,
-    sync::{Arc, Mutex, RwLock},
-};
+use parking_lot::{Mutex, RwLock};
+use std::{borrow::Borrow, collections::HashMap, fmt::Debug, hash::Hash, sync::Arc};
 
 /// This module contains the code related to implementation of Lru Policy
 
@@ -41,17 +38,27 @@ where
     // Note: from concurrent access, we are mostly safe in here because
     // we are asking caller to provide the mutable access to lru container
     fn push_front(inner: &mut LruInner<Key, Value>, node_index: usize) {
+        println!("  push-front: with index: {}", node_index);
+
         let current_head_idx = inner.head;
 
         // if there is a head presents, point head.prev to the given node
         match current_head_idx {
             Some(head_idx) => {
-                if let Some(current_head_node) = inner.nodes[head_idx].as_mut() {
-                    current_head_node.prev = Some(node_index);
-                }
+                // if let Some(current_head_node) = inner.nodes[head_idx].as_mut() {
+                //     current_head_node.prev = Some(node_index);
+                // }
+
+                println!("{}", inner.nodes.len());
+                println!("  current-head-index:  {head_idx}");
+                inner.nodes[head_idx]
+                    .as_mut()
+                    .expect(&format!("head index node not found: {head_idx}"))
+                    .prev = Some(node_index);
             }
             None => {
                 // if head not available then input node becomes the tail as well
+                println!("  changing the tail: {node_index}");
                 inner.tail = Some(node_index);
             }
         }
@@ -63,6 +70,8 @@ where
         node.next = current_head_idx;
         node.prev = None; // on the safer side, which make sure that prev is always point to none
         inner.head = Some(node_index);
+
+        println!("  front-push:done with index: {}", node_index);
     }
 
     // unlink the node, this api can be use to remove the node or push the node at the front
@@ -70,10 +79,18 @@ where
     // Note: from concurrent access, we are mostly safe in here because
     // we are asking caller to provide the mutable access to lru container
     fn unlink_node(inner: &mut LruInner<Key, Value>, node_index: usize) {
+        println!("  unlink-node: inside the unlink: {node_index}");
+        println!(
+            "    index: {}, node length: {} : {}",
+            node_index,
+            inner.nodes.len(),
+            inner.nodes.get(node_index).unwrap().is_some()
+        );
+
         let (node_pre, node_next) = {
-            let node = inner.nodes[node_index]
-                .as_ref()
-                .expect("this assertion makes sure that caller provides correct index");
+            let node = inner.nodes[node_index].as_ref().expect(&format!(
+                "this assertion makes sure that caller provides correct index: {node_index}"
+            ));
             (node.prev, node.next)
         };
 
@@ -101,15 +118,17 @@ where
                 inner.tail = node_pre;
             }
         };
+        println!(
+            " after-unlink: head => {:?}, tail: {:?}",
+            inner.head, inner.tail
+        );
+        println!("  unlink done: {node_index}");
     }
 
     // move the recently accessed nodes to the front iteratively as they have been added
     fn handle_recent_used(&self, inner: &mut LruInner<Key, Value>) {
         // todo: need to think about this lock, possibly we can use the parking_lot mutex in here for the light weight nature
-        let mut recent_guard = self
-            .recent_nodes_idx
-            .lock()
-            .expect("recency lock is poisoned");
+        let mut recent_guard = self.recent_nodes_idx.lock();
         for &node_index in recent_guard.iter() {
             if node_index < inner.nodes.len() && inner.nodes[node_index].is_some() {
                 // unlink the node where ever it is right now
@@ -124,14 +143,17 @@ where
     // remove the node index from the LRU
     // Note: caller has to make sure that input index is available in the node array
     fn remove(inner: &mut LruInner<Key, Value>, node_index: usize) {
+        println!("  inside remove: {node_index}");
         // first unlink the node
+        println!("  unlink the node index: {node_index}");
         Self::unlink_node(inner, node_index);
         if let Some(node) = inner.nodes[node_index].take() {
-            // mark the slot as free, so it can be used by others
-            inner.available_slots.push(node_index);
             // remove the entry from the map, and we let overwritten the value
             inner.map.remove(&node.key);
+            // mark the slot as free, so it can be used by others
+            inner.available_slots.push(node_index);
         }
+        println!("  remove done: {node_index}");
     }
 }
 
@@ -144,6 +166,17 @@ pub struct LruNode<Key, Value> {
     value: Value,
     prev: Option<usize>,
     next: Option<usize>,
+}
+
+impl<Key, Value> LruNode<Key, Value> {
+    fn new(key: Key, value: Value) -> Self {
+        Self {
+            key,
+            value,
+            prev: None,
+            next: None,
+        }
+    }
 }
 
 // indexed based Lru
@@ -203,6 +236,72 @@ where
 
     fn push(&self, key: Key, value: Value) {
         // take the write lock at the inner
+        let mut inner_guard = self.inner.write();
+
+        // recently used nodes which we are pushing in the recent-accessed
+        // handle recent used so eviction policy works correctly
+        // this makes a write a bit slow, and gives the read to boost
+        // self.handle_recent_used(&mut inner_guard);
+
+        // if the value is available already then update the value in place
+        // other insert the value fresh
+        match inner_guard.map.get(&key) {
+            Some(&node_index) => {
+                println!("inside the get");
+                // Self::unlink_node(&mut inner_guard, node_index);
+                // let node = inner_guard.nodes[node_index]
+                //     .as_mut()
+                //     .expect("assertion that if the index exists in then node exists");
+
+                // // update the value in-place
+                // node.value = value;
+
+                // // push the node to the front of the lru
+                // Self::push_front(&mut inner_guard, node_index);
+            }
+            // case if the node is not available in cache
+            None => {
+                println!("head: {:?}", inner_guard.head);
+                println!("tail: {:?}", inner_guard.tail);
+
+                // if capacity reached then make a room for a new node
+                if inner_guard.map.len() >= self.capacity {
+                    if let Some(tail_idx) = inner_guard.tail {
+                        println!("remove tail because capacity is full tail-index: {tail_idx}");
+                        Self::remove(&mut inner_guard, tail_idx);
+                    }
+                }
+
+                // space in the node
+                // - first check if indesx are available
+                // - second: grab index from the nodes itself
+                let node_index = match inner_guard.available_slots.pop() {
+                    Some(index) => {
+                        println!("index from available slot: {index}");
+                        println!("len before insert {}", inner_guard.nodes.len());
+                        inner_guard.nodes[index] = Some(LruNode::new(key.clone(), value));
+                        println!("len after insert {}", inner_guard.nodes.len());
+                        index
+                    }
+                    None => {
+                        let index = inner_guard.nodes.len();
+                        println!("index from len: {index}");
+                        inner_guard
+                            .nodes
+                            .push(Some(LruNode::new(key.clone(), value)));
+                        index
+                    }
+                };
+
+                println!("pushed node at index: {}", node_index);
+                inner_guard.map.insert(key, node_index);
+                Self::push_front(&mut inner_guard, node_index);
+                println!("head: {:?}", inner_guard.head);
+                println!("tail: {:?}", inner_guard.tail);
+            }
+        }
+
+        // Some more notes for concurrency
         // check if the key available in the map
         //  - update the value and move the node at the front
         // - if not available
@@ -212,16 +311,74 @@ where
         //   - then grab the free node from the list and then push the node at the from of it
         //   - insert the entry into the map
     }
+
     fn remove(&self, key: &Key) {
         todo!()
     }
+
     fn contains(&self, key: &Key) -> bool {
-        todo!()
+        self.inner.read().map.contains_key(key)
     }
+
     fn len(&self) -> usize {
-        todo!()
+        self.inner.read().map.len()
     }
+
     fn is_empty(&self) -> bool {
-        todo!()
+        self.inner.read().map.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sharded::{cache::Cache, eviction::Eviction};
+
+    use super::*;
+
+    #[test]
+    fn push_test() {
+        let cache = Lru::new(2);
+        assert_eq!(cache.len(), 0);
+        // assert_eq!(cache.len(), 1);
+        // assert!(cache.contains(&1));
+        // assert_eq!(cache.contains(&2), false);
+
+        println!("inside push: key: {}", 0);
+        cache.push(0, 1);
+        println!("push done: key: {}", 0);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 1);
+        cache.push(1, 2);
+        println!("push done: key: {}", 1);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 2);
+        cache.push(2, 3);
+        println!("push done: key: {}", 2);
+
+        println!("-----------------------------");
+
+        println!("inside push: key: {}", 3);
+        cache.push(3, 4);
+        println!("push done: key: {}", 3);
+
+        println!("-----------------------------");
+        cache.push(5, 1);
+        cache.push(6, 1);
+        cache.push(7, 1);
+        cache.push(8, 1);
+
+        cache.push(12, 1);
+        cache.push(13, 1);
+        cache.push(14, 1);
+        cache.push(15, 1);
+        cache.push(16, 1);
+        cache.push(17, 1);
+        cache.push(18, 1);
+
+        println!("cache size: {}", cache.len());
     }
 }
